@@ -1,0 +1,395 @@
+SET client_min_messages = warning;
+\set ECHO none
+SET search_path = pst;
+select sprintf('Hello');
+ sprintf 
+---------
+ Hello
+(1 row)
+
+select sprintf('Hello %s', 'World');
+   sprintf   
+-------------
+ Hello World
+(1 row)
+
+select sprintf('Hello %10s', 'World');
+     sprintf      
+------------------
+ Hello      World
+(1 row)
+
+select sprintf('>>%10.4d<<', 100.22);
+    sprintf     
+----------------
+ >>      0100<<
+(1 row)
+
+select sprintf('>>%-10.4d<<', 10.20);
+    sprintf     
+----------------
+ >>0010      <<
+(1 row)
+
+select sprintf('>>%10.4f<<', 100.22);
+    sprintf     
+----------------
+ >>  100.2200<<
+(1 row)
+
+select sprintf('>>%-10.4f<<', 10.20);
+    sprintf     
+----------------
+ >>10.2000   <<
+(1 row)
+
+select pst.format('Hello %s', 'World');
+   format    
+-------------
+ Hello World
+(1 row)
+
+select pst.format('INSERT INTO %I VALUES(%L,%L,%L)', 'my tab',NULL, 10, 'Paul''s Smith');
+                         format                         
+--------------------------------------------------------
+ INSERT INTO "my tab" VALUES(NULL,'10','Paul''s Smith')
+(1 row)
+
+-- should to fail
+select pst.format('INSERT INTO %I VALUES(%L,%L,%L)', NULL,NULL, 10, 'Paul''s Smith');
+ERROR:  SQL identifier is undefined
+HINT:  You try to use NULL for %I format
+select pst.concat('a','b',10,true);
+  concat  
+----------
+ a,b,10,t
+(1 row)
+
+select pst.concat_ws('*','a','b',10,true);
+ concat_ws 
+-----------
+ a*b*10*t
+(1 row)
+
+select pst.concat_js('a','b',10,to_date('2010-12-28','YYYY-MM-DD'), true, NULL);
+             concat_js             
+-----------------------------------
+ "a","b",10,"12-28-2010",true,null
+(1 row)
+
+select pst.concat_sql('a','b',10,to_date('2010-12-28','YYYY-MM-DD'), true, NULL);
+           concat_sql           
+--------------------------------
+ 'a','b',10,'12-28-2010',t,NULL
+(1 row)
+
+select pst.rvrs('Ahoj');
+ rvrs 
+------
+ johA
+(1 row)
+
+select pst.reverse('Ahoj');
+ reverse 
+---------
+ johA
+(1 row)
+
+select 7 - i, pst.left('Hello', 7 - i) from generate_series(1,14) g(i);
+ ?column? | left  
+----------+-------
+        6 | Hello
+        5 | Hello
+        4 | Hell
+        3 | Hel
+        2 | He
+        1 | H
+        0 | 
+       -1 | Hell
+       -2 | Hel
+       -3 | He
+       -4 | H
+       -5 | 
+       -6 | 
+       -7 | 
+(14 rows)
+
+select 7 - i, pst.right('Hello', 7 - i) from generate_series(1,14) g(i);
+ ?column? | right 
+----------+-------
+        6 | Hello
+        5 | Hello
+        4 | ello
+        3 | llo
+        2 | lo
+        1 | o
+        0 | 
+       -1 | ello
+       -2 | llo
+       -3 | lo
+       -4 | o
+       -5 | 
+       -6 | 
+       -7 | 
+(14 rows)
+
+select next_day(to_date('2010-12-28','YYYY-MM-DD'), 'mon');
+  next_day  
+------------
+ 01-03-2011
+(1 row)
+
+select last_day(to_date('2010-12-28','YYYY-MM-DD'));
+  last_day  
+------------
+ 12-31-2010
+(1 row)
+
+create table omega(a int, b int);
+insert into omega select i, i+10 from generate_series(1,1000) g(i);
+create table omega2(a int, b int);
+insert into omega2 select (x.xx).* from (select counter(omega,200, true) xx from omega) x;
+NOTICE:  processed 200 rows, current value is '(200,210)'
+NOTICE:  processed 200 rows, current value is '(200,210)'
+NOTICE:  processed 400 rows, current value is '(400,410)'
+NOTICE:  processed 400 rows, current value is '(400,410)'
+NOTICE:  processed 600 rows, current value is '(600,610)'
+NOTICE:  processed 600 rows, current value is '(600,610)'
+NOTICE:  processed 800 rows, current value is '(800,810)'
+NOTICE:  processed 800 rows, current value is '(800,810)'
+NOTICE:  processed 1000 rows, current value is '(1000,1010)'
+NOTICE:  processed 1000 rows, current value is '(1000,1010)'
+drop table omega2;
+select diff_string('yellow horse', 'yellow cat');
+           diff_string           
+---------------------------------
+ yellow <del>horse</><ins>cat</>
+(1 row)
+
+select lc_substring('aaahhhhxxxx','hhhuuuaaaammm');
+ lc_substring 
+--------------
+ aaa
+(1 row)
+
+select record_get_field(omega,'a') from omega limit 10;
+ record_get_field 
+------------------
+ 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+ 10
+(10 rows)
+
+select (record_get_fields(omega, variadic array['a','b']))[2] from omega limit 10;
+ record_get_fields 
+-------------------
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+ 18
+ 19
+ 20
+(10 rows)
+
+select * from record_expand(record_set_fields(row(10,20), 'f1',23));
+ name | value |   typ   
+------+-------+---------
+ f1   | 23    | integer
+ f2   | 20    | integer
+(2 rows)
+
+create or replace function omega_trg_fce()
+returns trigger as $$
+declare r record;
+begin
+  for r in select * from record_expand(new)
+  loop
+    raise notice 'name := "%", value := "%"', r.name, r.value;
+  end loop;
+  return new;
+end;
+$$ language plpgsql;
+create trigger xxx before insert on omega for each row execute procedure omega_trg_fce();
+insert into omega values(-1,-1000);
+NOTICE:  name := "a", value := "-1"
+NOTICE:  name := "b", value := "-1000"
+select upper('Hello %s %s %s' %% ('World',1999, to_date('2010-12-23','YYYY-MM-DD')));
+            upper            
+-----------------------------
+ HELLO WORLD 1999 12-23-2010
+(1 row)
+
+select '{1,3,4}'::bitmapset;
+ bitmapset 
+-----------
+ {1,3,4}
+(1 row)
+
+select '{1,3,4}'::bitmapset || 8;
+ ?column?  
+-----------
+ {1,3,4,8}
+(1 row)
+
+select '{1,3,4}'::bitmapset || '{3,4,6,9}'::bitmapset;
+  ?column?   
+-------------
+ {1,3,4,6,9}
+(1 row)
+
+select '{1,2}'::bitmapset = '{1,2}'::bitmapset;
+ ?column? 
+----------
+ t
+(1 row)
+
+select '{1,2}'::bitmapset = '{1,2,3}'::bitmapset;
+ ?column? 
+----------
+ f
+(1 row)
+
+select add_member('{4,2}',3);
+ add_member 
+------------
+ {2,3,4}
+(1 row)
+
+select add_member(NULL, 3);
+ add_member 
+------------
+ {3}
+(1 row)
+
+select add_members('{}', 2,3,4);
+ add_members 
+-------------
+ {2,3,4}
+(1 row)
+
+select del_member('{3,2,1}',3);
+ del_member 
+------------
+ {1,2}
+(1 row)
+
+select del_members('{3,2,1}',2,3);
+ del_members 
+-------------
+ {1}
+(1 row)
+
+select is_member('{1,2}', 3);
+ is_member 
+-----------
+ f
+(1 row)
+
+select is_member('{1,2}', 2);
+ is_member 
+-----------
+ t
+(1 row)
+
+select unnest((bitmapset '{1,2,3,4}')::int[]);
+ unnest 
+--------
+      1
+      2
+      3
+      4
+(4 rows)
+
+select ARRAY[1,2,3,4,2,1]::bitmapset;
+   array   
+-----------
+ {1,2,3,4}
+(1 row)
+
+select bitmapset_is_subset('{1,2}','{1,2,3}');
+ bitmapset_is_subset 
+---------------------
+ t
+(1 row)
+
+select bitmapset_is_subset('{0}','{1,2}');
+ bitmapset_is_subset 
+---------------------
+ f
+(1 row)
+
+select bitmapset_is_subset('{1,2}','{1,3}');
+ bitmapset_is_subset 
+---------------------
+ f
+(1 row)
+
+select bitmapset_overlap('{1,2}','{1,2,3}');
+ bitmapset_overlap 
+-------------------
+ t
+(1 row)
+
+select bitmapset_overlap('{0}','{1,2}');
+ bitmapset_overlap 
+-------------------
+ f
+(1 row)
+
+select bitmapset_overlap('{1,2}','{1,3}');
+ bitmapset_overlap 
+-------------------
+ t
+(1 row)
+
+select bitmapset_difference('{1,2}','{1,2,3}');
+ bitmapset_difference 
+----------------------
+ {}
+(1 row)
+
+select bitmapset_difference('{0}','{1,2}');
+ bitmapset_difference 
+----------------------
+ {0}
+(1 row)
+
+select bitmapset_difference('{1,2}','{1,3}');
+ bitmapset_difference 
+----------------------
+ {2}
+(1 row)
+
+select bitmapset_is_empty(bitmapset_difference('{1,2}','{1,2,3}'));
+ bitmapset_is_empty 
+--------------------
+ t
+(1 row)
+
+select bitmapset_is_empty(bitmapset_difference('{0}','{1,2}'));
+ bitmapset_is_empty 
+--------------------
+ f
+(1 row)
+
+drop table omega;
+create table omega(a int);
+insert into omega values(1),(2),(10),(NULL),(2),(1),(33);
+select bitmapset_collect(a) from omega;
+ bitmapset_collect 
+-------------------
+ {1,2,10,33}
+(1 row)
+
+drop table omega;

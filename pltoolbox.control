@@ -1,0 +1,4 @@
+comment = 'set of functions for usage from PostgreSQL stored procedures'
+default_version = '1.0.3'
+module_pathname = '$libdir/pltoolbox'
+relocatable = false

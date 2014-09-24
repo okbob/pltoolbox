@@ -1,0 +1,222 @@
+DROP SCHEMA IF EXISTS pst CASCADE;
+
+-- Adjust this setting to control where the objects get created.
+CREATE SCHEMA pst;
+SET search_path = pst;
+
+CREATE OR REPLACE FUNCTION sprintf(fmt text, VARIADIC args "any")
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_sprintf'
+LANGUAGE C IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION sprintf(fmt text)
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_sprintf_nv'
+LANGUAGE C IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION format(fmt text, VARIADIC args "any")
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_format'
+LANGUAGE C IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION format(fmt text)
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_format_nv'
+LANGUAGE C IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION concat(VARIADIC args "any")
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_concat'
+LANGUAGE C IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION concat_ws(separator text, VARIADIC args "any")
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_concat_ws'
+LANGUAGE C IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION concat_js(VARIADIC args "any")
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_concat_js'
+LANGUAGE C IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION concat_sql(VARIADIC args "any")
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_concat_sql'
+LANGUAGE C IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION rvrs(str text)
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_rvrs'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION reverse(str text)
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_rvrs'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION left(str text, n int)
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_left'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION right(str text, n int)
+RETURNS text 
+AS 'MODULE_PATHNAME','pst_right'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION chars_to_array(str text)
+RETURNS text[] 
+AS 'MODULE_PATHNAME','pst_chars_to_array'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION next_day(day date, dow text)
+RETURNS date
+AS 'MODULE_PATHNAME','pst_next_day'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION last_day(day date)
+RETURNS date
+AS 'MODULE_PATHNAME','pst_last_day'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION counter(anyelement, int, bool)
+RETURNS anyelement
+AS 'MODULE_PATHNAME','pst_counter' LANGUAGE C IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION diff_string(S text, T text)
+RETURNS text
+AS 'MODULE_PATHNAME','pst_diff_string' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION lc_substring(S text, T text)
+RETURNS text
+AS 'MODULE_PATHNAME','pst_lc_substring' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION record_expand(record, OUT name text, OUT value text, OUT typ text)
+RETURNS SETOF record
+AS 'MODULE_PATHNAME','pst_record_expand' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION record_get_field(record, name text)
+RETURNS text
+AS 'MODULE_PATHNAME','pst_record_get_field' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION record_get_fields(record, VARIADIC names text[])
+RETURNS text[]
+AS 'MODULE_PATHNAME','pst_record_get_fields' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION record_set_fields(anyelement, VARIADIC params "any")
+RETURNS anyelement
+AS 'MODULE_PATHNAME','pst_record_set_fields_any' LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION record_set_fields(anyelement, VARIADIC params text[])
+RETURNS anyelement
+AS 'MODULE_PATHNAME','pst_record_set_fields_textarray' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION format_op(text, "any")
+RETURNS text AS 'MODULE_PATHNAME', 'pst_format_op' LANGUAGE C;
+
+CREATE OPERATOR public.%% (
+  procedure = pst.format_op,
+  LEFTARG = text,
+  RIGHTARG = "any"
+);
+
+CREATE OPERATOR pst.%% (
+  procedure = pst.format_op,
+  LEFTARG = text,
+  RIGHTARG = "any"
+);
+
+CREATE OR REPLACE FUNCTION bitmapset_in(cstring)
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_bms_in' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION bitmapset_out(bitmapset)
+RETURNS cstring AS 'MODULE_PATHNAME','pst_bms_out' LANGUAGE C STRICT;
+
+CREATE TYPE bitmapset (
+  internallength = variable,
+  input          = pst.bitmapset_in,
+  output         = pst.bitmapset_out,
+  like      = bytea
+);
+      
+CREATE OR REPLACE FUNCTION add_member(bitmapset, int)
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_bms_add_member' LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION add_members(bitmapset, VARIADIC int[])
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_bms_add_members' LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION del_member(bitmapset, int)
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_bms_del_member' LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION del_members(bitmapset, VARIADIC int[])
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_bms_del_members' LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION is_member(bitmapset, int)
+RETURNS bool AS 'MODULE_PATHNAME','pst_bms_is_member' LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION bms_to_intarray(bitmapset)
+RETURNS int[] AS 'MODULE_PATHNAME','pst_bms_to_intarray' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION intarray_to_bms(int[])
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_intarray_to_bms' LANGUAGE C STRICT;
+
+CREATE CAST (bitmapset AS int[]) WITH FUNCTION bms_to_intarray(bitmapset);
+CREATE CAST (int[] AS bitmapset) WITH FUNCTION intarray_to_bms(int[]);
+
+CREATE OR REPLACE FUNCTION bitmapset_equal(bitmapset, bitmapset)
+RETURNS bool AS 'MODULE_PATHNAME','pst_bms_equal' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION bitmapset_union(bitmapset, bitmapset)
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_bms_union' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION bitmapset_intersect(bitmapset, bitmapset)
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_bms_intersect' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION bitmapset_is_subset(bitmapset, bitmapset)
+RETURNS bool AS 'MODULE_PATHNAME','pst_bms_is_subset' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION bitmapset_overlap(bitmapset, bitmapset)
+RETURNS bool AS 'MODULE_PATHNAME','pst_bms_is_overlap' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION bitmapset_num_members(bitmapset)
+RETURNS int AS 'MODULE_PATHNAME','pst_bms_num_members' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION bitmapset_is_empty(bitmapset)
+RETURNS bool AS 'MODULE_PATHNAME','pst_bms_is_empty' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION bitmapset_difference(bitmapset, bitmapset)
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_bms_difference' LANGUAGE C STRICT;
+
+CREATE OR REPLACE FUNCTION bitmapset_nonempty_difference(bitmapset, bitmapset)
+RETURNS bool AS 'MODULE_PATHNAME','pst_bms_nonempty_difference' LANGUAGE C STRICT;
+
+
+CREATE OPERATOR || (
+  PROCEDURE = bitmapset_union,
+  LEFTARG = bitmapset,
+  RIGHTARG = bitmapset
+);
+
+CREATE OPERATOR || (
+  PROCEDURE = add_member,
+  LEFTARG = bitmapset,
+  RIGHTARG = int
+);
+
+CREATE OPERATOR = (
+  PROCEDURE = bitmapset_equal,
+  LEFTARG = bitmapset,
+  RIGHTARG = bitmapset
+);
+
+CREATE OR REPLACE FUNCTION bitmapset_collect_transfn(internal, int)
+RETURNS internal AS 'MODULE_PATHNAME','pst_bms_collect_transfn' LANGUAGE C;
+
+CREATE OR REPLACE FUNCTION bitmapset_collect_final(internal)
+RETURNS bitmapset AS 'MODULE_PATHNAME','pst_bms_collect_final' LANGUAGE C;
+
+CREATE AGGREGATE bitmapset_collect (int) (
+  sfunc = bitmapset_collect_transfn,
+  stype = internal,
+  finalfunc = bitmapset_collect_final
+);
