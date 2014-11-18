@@ -10,13 +10,13 @@ command from a (root) Unix-like shell
 In order to enable the module with its SQL interface you need to run the
 following command from your (non-mandatory root) shell
 
-    psql <connection string> -f $(pg_config --sharedir)/contrib/pltoolbox.sql <database>
+    psql <connection string> -f $(pg_config --sharedir)/extension/pltoolbox.sql <database>
 
 Remember that this command needs to be run again if you DROP and reCREATE a
 database, unless you run the above command into the template1 database.
 To uninstall and disable the module you need to run the following:
 
-    psql <connection string> -f $(pg_config --sharedir)/contrib/uninstall_pstcoll.sql
+    psql <connection string> -f $(pg_config --sharedir)/extension/uninstall_pstcoll.sql
 
 All functions will be available into the pst schema and need thus to be called
 like this:
