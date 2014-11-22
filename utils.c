@@ -13,6 +13,8 @@
 #include "postgres.h"
 #include "funcapi.h"
 #include "utils/lsyscache.h"
+#include <time.h>
+
 
 PG_FUNCTION_INFO_V1(pst_counter);
 
@@ -23,6 +25,7 @@ typedef struct
 	long int	iterations;
 	int	freq;
 	Oid		typoutput;
+	time_t start;
 } counter_cache;
 
 /*
@@ -42,6 +45,7 @@ pst_counter(PG_FUNCTION_ARGS)
 										sizeof(counter_cache));
 		ptr = (counter_cache *) fcinfo->flinfo->fn_extra;
 		ptr->iterations = 0;
+		ptr->start = time(NULL);
 		ptr->typoutput = InvalidOid;
 
 		if (PG_ARGISNULL(1))
@@ -63,18 +67,19 @@ pst_counter(PG_FUNCTION_ARGS)
 	
 	if (++ptr->iterations % ptr->freq == 0)
 	{
+		time_t delta = (time(NULL) - ptr->start);
 		if (!OidIsValid(ptr->typoutput))
 		{
-			elog(NOTICE, "processed %ld rows", ptr->iterations);
+			elog(NOTICE, "[%ld] processed %ld rows", delta, ptr->iterations);
 		}
 		else
 		{
 			/* show a processed row, when it's requested */
 			if (PG_ARGISNULL(0))
-				elog(NOTICE, "processed %ld rows, current value is null", ptr->iterations);
+				elog(NOTICE, "[%ld] processed %ld rows, current value is null", delta, ptr->iterations);
 			else
 			{
-				elog(NOTICE, "processed %ld rows, current value is '%s'", ptr->iterations,
+				elog(NOTICE, "[%ld] processed %ld rows, current value is '%s'", delta, ptr->iterations,
 										    OidOutputFunctionCall(ptr->typoutput, value));
 			}
 		}

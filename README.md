@@ -8,7 +8,8 @@ command from a (root) Unix-like shell
     USE_PGXS=1 make install
 
 In order to enable the module with its SQL interface you need to run the
-following command from your (non-mandatory root) shell
+following command from your (non-mandatory root) shell (You may need to replace contrib 
+with extension on some version)
 
     psql <connection string> -f $(pg_config --sharedir)/contrib/pltoolbox.sql <database>
 
